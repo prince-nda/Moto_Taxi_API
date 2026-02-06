@@ -114,3 +114,65 @@ class APIHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(
             json.dumps({"error": "Unauthorized", "message": "Basic authentication required"}).encode('utf-8'))
+
+    def do_GET(self):
+        parsed_path = urllib.parse.urlparse(self.path)
+        path = parsed_path.path
+
+        # Check if authentication is required
+        if self._require_auth(self.path):  # Now this will work correctly
+            role = self._authenticate()
+            if not role:
+                self._send_auth_required()
+                return
+
+        # Handle different endpoints
+        if path == '/':
+            self._send_response(200, {"message": "Moto Taxi API"})
+
+        elif path == '/riders':
+            self._send_response(200, {"riders": riders})
+
+        elif path == '/riders/available':
+            available_riders = [rider for rider in riders if rider['is_available']]
+            self._send_response(200, {"available_riders": available_riders})
+
+        elif path.startswith('/riders/'):
+            try:
+                rider_id = int(path.split('/')[-1])
+                rider = next((r for r in riders if r['id'] == rider_id), None)
+                if rider:
+                    self._send_response(200, rider)
+                else:
+                    self._send_response(404, {"message": "Rider not found"})
+            except ValueError:
+                self._send_response(400, {"message": "Invalid rider ID"})
+
+        elif path == '/health':
+            self._send_response(200, {"status": "OK"})
+
+        # Add API documentation endpoints
+        elif path == '/openapi.json':
+            self.send_response(200)
+            self.send_header('content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps(spec.to_dict()).encode('utf-8'))
+
+        elif path == '/openapi.yaml':
+            self.send_response(200)
+            self.send_header('content-type', 'application/yaml')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(yaml.dump(spec.to_dict()).encode('utf-8'))
+
+        else:
+            self._send_response(404, {"message": "Endpoint not found"})
+
+    def do_OPTIONS(self):
+        """Handle OPTIONS requests for CORS"""
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        self.end_headers()
