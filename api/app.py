@@ -16,3 +16,26 @@ spec = APISpec(
     servers=[{"url": "http://localhost:8888"}],
     plugins=[MarshmallowPlugin()],
 )
+
+USERS = {
+    "admin": {
+        "password": "admin123",
+        "role": "admin"
+    },
+    "user": {
+        "password": "user123",
+        "role": "user"
+    },
+    "demo": {
+        "password": "demo123",
+        "role": "user"
+    },
+}
+
+spec.components.security_scheme(
+    "BasicAuth",
+    {
+        "type": "http",
+        "scheme": "basic"
+    }
+)
